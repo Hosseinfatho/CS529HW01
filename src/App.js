@@ -29,32 +29,63 @@ function App() {
   
   //state for expanding/collapsing instructions
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
+  
+  //state for counties data and toggle
+  const [countyData, setCountyData] = useState();
+  const [showCounties, setShowCounties] = useState(false);
 
   //load map contours
   //react looks into the '/public' folder by default
   async function fetchMap(){
-    fetch('us-states.geojson').then(paths=>{
-      paths.json().then(data=>{
-        setMap(data);
-      })
-    })
+    try {
+      const response = await fetch('us-states.geojson');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Map data loaded:', data);
+      setMap(data);
+    } catch (error) {
+      console.error('Error loading map:', error);
+    }
+  }
+
+  //load county data
+  async function fetchCountyData(){
+    try {
+      const response = await fetch('counties-10m.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('County data loaded:', data);
+      setCountyData(data);
+    } catch (error) {
+      console.error('Error loading county data:', error);
+    }
   }
 
   //fetch gun data and attach a timestamp to make sorting dates easier for filters
   async function fetchGunData(){
-    fetch('processed_gundeaths_data.json').then(d => {
-      d.json().then(gd=>{
-        console.log('gundata',gd)
-        setGunData(gd);
-      })
-    })
+    try {
+      const response = await fetch('new_processed_gundeaths_data.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Gun data loaded:', data);
+      setGunData(data);
+    } catch (error) {
+      console.error('Error loading gun data:', error);
+    }
   }
 
 
   //fetch data, called only once
   useEffect(()=>{
     fetchMap();
-    fetchGunData()
+    fetchGunData();
+    fetchCountyData();
   },[])
 
  
@@ -70,6 +101,8 @@ function App() {
                   <Whitehat
                     map={map}
                     data={gunData}
+                    countyData={countyData}
+                    showCounties={showCounties}
                     ToolTip={ToolTip}
                     zoomedState={zoomedState}
                     setSelectedStuff={setSelectedStuff}
@@ -90,6 +123,21 @@ function App() {
                 >
                   {'Instructions ' + (instructionsExpanded ? '▼' : '▶')}
                 </h1>
+                
+                <div style={{'marginBottom': '15px', 'padding': '8px', 'border': '1px solid #ddd', 'borderRadius': '4px', 'backgroundColor': '#f9f9f9'}}>
+                  <label style={{'fontSize': '12px', 'fontWeight': 'bold', 'display': 'flex', 'alignItems': 'center', 'cursor': 'pointer'}}>
+                    <input 
+                      type="checkbox" 
+                      checked={showCounties} 
+                      onChange={(e) => setShowCounties(e.target.checked)}
+                      style={{'marginRight': '8px'}}
+                    />
+                    Show Counties
+                  </label>
+                  <p style={{'fontSize': '10px', 'color': '#666', 'marginTop': '4px', 'marginBottom': '0'}}>
+                    Toggle between state-level and county-level choropleth
+                  </p>
+                </div>
                 {instructionsExpanded && (
                   <div>
                     <p style={{'marginBottom': '8px'}}>{'1- Click on each state to zoom/unzoom'}</p>
@@ -182,6 +230,12 @@ function App() {
 
   //toggle which visualization we're looking at based on the "viewToggle" state
   const hat = ()=>{
+    // Only render when data is loaded
+    console.log('Hat render check:', {map: !!map, gunData: !!gunData, countyData: !!countyData});
+    if(!map || !gunData){
+      return <div>Loading...</div>;
+    }
+    
     if(viewToggle === 'whitehat'){
       return makeWhiteHat();
     }

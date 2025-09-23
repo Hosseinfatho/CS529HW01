@@ -1,6 +1,7 @@
 import React, {useRef,useMemo} from 'react';
 import useSVGCanvas from './useSVGCanvas.js';
 import * as d3 from 'd3';
+import * as topojson from 'topojson-client';
 
 export default function Whitehat(props){
     //this is a generic component for plotting a d3 plot
@@ -34,9 +35,20 @@ export default function Whitehat(props){
     //TODO: edit or replace this code to create your white-hat version of the map view; for example, change the color map based on colorbrewer2, 
     const mapGroupSelection = useMemo(()=>{
         //wait until the svg is rendered and data is loaded
-        if(svg !== undefined & props.map !== undefined & props.data !== undefined){
+        if(svg !== undefined && props.map !== undefined && props.data !== undefined){
+            console.log('Rendering map...', {svg, map: props.map, data: props.data, countyData: props.countyData, showCounties: props.showCounties});
 
             const stateData = props.data.states;
+
+            // Check if we should show counties
+            const showCounties = props.showCounties && props.countyData;
+            let mapData = props.map;
+            let features = mapData.features;
+            
+            // If showing counties, convert TopoJSON to GeoJSON
+            if (showCounties) {
+                features = topojson.feature(props.countyData, props.countyData.objects.counties).features;
+            }
 
             //Calculate the gun death rate per 100,000 (or per million)
             const getEncodedFeature = d => {
@@ -51,7 +63,19 @@ export default function Whitehat(props){
             const stateCounts = Object.values(stateData).map(getEncodedFeature);
 
             //get color extends for the color legend
-            const [stateMin,stateMax] = d3.extent(stateCounts);
+            let [stateMin,stateMax] = d3.extent(stateCounts);
+            
+            // If showing counties, use county death rates for the scale
+            if (showCounties && props.data.counties) {
+                const countyDeathRates = props.data.counties.map(county => {
+                    return county.population > 0 ? 
+                        (county.count * 1000000) / county.population : 0;
+                }).filter(rate => rate > 0); // Only include counties with deaths
+                
+                if (countyDeathRates.length > 0) {
+                    [stateMin, stateMax] = d3.extent(countyDeathRates);
+                }
+            }
 
             //color map scale, scales numbers to a smaller range to use with a d3 color scale
             //we're using 0.2-1 range so lighter blue represents fewer deaths, darker blue more deaths
@@ -93,41 +117,215 @@ export default function Whitehat(props){
                 return colorMap(getStateVal(d.properties.NAME))
             }
 
+            // County coloring based on actual death data
+            function getCountyColor(d) {
+                if (!showCounties) return '#E0E0E0';
+                
+                // Find county data using geographical matching
+                const countyData = findCountyData(d);
+                
+                if (!countyData) {
+                    return '#f0f0f0'; // Very light gray for counties with no data
+                }
+                
+                if (countyData.count === 0) {
+                    return '#f8f8f8'; // Slightly darker gray for counties with data but no deaths
+                }
+                
+                // Calculate deaths per million for this county
+                const deathRate = countyData.population > 0 ? 
+                    ((countyData.count * 1000000) / countyData.population) : 0;
+                
+                // Use the same scale as states but with county death rates
+                const scaledValue = stateScale(deathRate);
+                
+                return colorMap(scaledValue);
+            }
+
+            // Enhanced county matching function using geographical coordinates
+            function findCountyData(countyFeature) {
+                const countyName = countyFeature.properties.name || 'Unknown';
+                
+                // First try exact name match (case-insensitive)
+                let countyData = props.data.counties.find(county => 
+                    county.county.toLowerCase() === countyName.toLowerCase()
+                );
+                
+                if (countyData) return countyData;
+                
+                // If no exact match, try geographical matching using city data
+                // Get county centroid coordinates
+                const countyCentroid = d3.geoCentroid(countyFeature);
+                const [countyLng, countyLat] = countyCentroid;
+                
+                // Find nearest city with gun death data
+                let nearestCity = null;
+                let minDistance = Infinity;
+                
+                props.data.cities.forEach(city => {
+                    if (city.lat && city.lng) {
+                        // Calculate distance using Haversine formula
+                        const distance = calculateDistance(countyLat, countyLng, city.lat, city.lng);
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestCity = city;
+                        }
+                    }
+                });
+                
+                // Only use geographical match if distance is reasonable (within ~100km)
+                if (minDistance < 100 && nearestCity) {
+                    // Create a synthetic county data object from city data
+                    return {
+                        county: countyName,
+                        state: nearestCity.state,
+                        count: nearestCity.count,
+                        male_count: nearestCity.male_count,
+                        population: nearestCity.population || 50000, // Estimate if not available
+                        lat: nearestCity.lat,
+                        lng: nearestCity.lng
+                    };
+                }
+                
+                // Fallback: try partial name matching
+                const variations = [
+                    countyName.toLowerCase().replace(' county', ''),
+                    countyName.toLowerCase().replace(' parish', ''),
+                    countyName.toLowerCase().replace(' borough', ''),
+                    countyName.toLowerCase().replace(' city', '')
+                ];
+                
+                for (const variation of variations) {
+                    countyData = props.data.counties.find(county => 
+                        county.county.toLowerCase() === variation
+                    );
+                    if (countyData) return countyData;
+                }
+                
+                return null;
+            }
+
+            // Haversine formula to calculate distance between two points
+            function calculateDistance(lat1, lng1, lat2, lng2) {
+                const R = 6371; // Earth's radius in kilometers
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLng = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                         Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            // Debug: Check county matching when showing counties
+            if (showCounties) {
+                let matchedCount = 0;
+                let geoMatchedCount = 0;
+                let nameMatchedCount = 0;
+                features.forEach(feature => {
+                    const countyName = feature.properties.name || 'Unknown';
+                    const countyData = findCountyData(feature);
+                    if (countyData) {
+                        matchedCount++;
+                        // Check if it was a geographical match (synthetic data)
+                        if (countyData.county === countyName && countyData.lat && countyData.lng) {
+                            geoMatchedCount++;
+                        } else if (countyData.county.toLowerCase() === countyName.toLowerCase()) {
+                            nameMatchedCount++;
+                        }
+                    }
+                });
+                console.log(`County matching: ${matchedCount}/${features.length} counties matched (${nameMatchedCount} name matches, ${geoMatchedCount} geographical matches)`);
+            }
+
             //clear earlier drawings
             svg.selectAll('g').remove();
 
             //OPTIONAL: EDIT THIS TO CHANGE THE DETAILS OF HOW THE MAP IS DRAWN
             //draw borders from map and add tooltip
             let mapGroup = svg.append('g').attr('class','mapbox');
-            mapGroup.selectAll('path').filter('.state')
-                .data(props.map.features).enter()
-                .append('path').attr('class','state')
+            
+            // Choose class name based on what we're showing
+            const pathClass = showCounties ? 'county' : 'state';
+            
+            mapGroup.selectAll('path').filter(`.${pathClass}`)
+                .data(features).enter()
+                .append('path').attr('class', pathClass)
                 //ID is useful if you want to do brushing as it gives you a way to select the path
-                .attr('id',d=> cleanString(d.properties.NAME))
+                .attr('id',d=> showCounties ? `county_${d.id}` : cleanString(d.properties.NAME))
                 .attr('d',geoGenerator)
-                .attr('fill',getStateColor)
+                .attr('fill', showCounties ? getCountyColor : getStateColor) // Color counties based on estimated data
                 .attr('stroke','black')
-                .attr('stroke-width',.1)
+                .attr('stroke-width', showCounties ? 0.05 : 0.1)
                 .on('mouseover',(e,d)=>{
+                    if (showCounties) {
+                        // County tooltip with actual data
+                        let countyName = d.properties.name || 'Unknown County';
+                        const countyData = findCountyData(d);
+                        
+                        if (countyData) {
+                            let deathCount = countyData.count;
+                            let maleCount = countyData.male_count;
+                            let femaleCount = deathCount - maleCount;
+                            let population = countyData.population;
+                            let deathRate = population > 0 ? 
+                                Math.round(((deathCount * 1000000) / population) * 10) / 10 : 0;
+                            let stateName = countyData.state;
+                            
+                            let text = countyData.county + ' County, ' + stateName + '</br>' + 
+                                      'Gun Deaths: ' + deathCount + '</br>' +
+                                      'Male: ' + maleCount + ', Female: ' + femaleCount + '</br>' +
+                                      'Per Million: ' + deathRate + '</br>' +
+                                      'Population: ' + population.toLocaleString();
+                            
+                            // Add note if this was a geographical match
+                            if (countyData.lat && countyData.lng && countyData.county === countyName) {
+                                text += '</br><em>(Nearest city data)</em>';
+                            }
+                            
+                            tTip.html(text);
+                        } else {
+                            let text = countyName + ' County</br>' + 
+                                      'No gun death data available';
+                            tTip.html(text);
+                        }
+                    } else {
+                        // State tooltip
                     let state = cleanString(d.properties.NAME);
                     //this updates the brushed state
                     if(props.brushedState !== state){
                         props.setBrushedState(state);
                     }
                     let sname = d.properties.NAME;
-                    let rawCount = getRawCount(sname);
-                    let perMillionRate = getCount(sname);
+                        let rawCount = getRawCount(sname);
+                        let perMillionRate = getCount(sname);
                     let text = sname + '</br>'
-                        + 'Gun Deaths: ' + rawCount + '</br>'
-                        + 'Per Million: ' + perMillionRate;
+                            + 'Gun Deaths: ' + rawCount + '</br>'
+                            + 'Per Million: ' + perMillionRate;
                     tTip.html(text);
+                    }
                 }).on('mousemove',(e)=>{
                     //see app.js for the helper function that makes this easier
                     props.ToolTip.moveTTipEvent(tTip,e);
                 }).on('mouseout',(e,d)=>{
+                    if (!showCounties) {
                     props.setBrushedState();
+                    }
                     props.ToolTip.hideTTip(tTip);
                 });
+
+            // If showing counties, add state boundaries on top for clarity
+            if (showCounties) {
+                mapGroup.selectAll('path.state-boundary')
+                    .data(props.map.features).enter()
+                    .append('path').attr('class', 'state-boundary')
+                    .attr('d', geoGenerator)
+                    .attr('fill', 'none')
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 0.8)
+                    .attr('pointer-events', 'none'); // Don't interfere with county interactions
+            }
 
 
             //TODO: replace or edit the code below to change the city marker being used. Hint: think of the cityScale range (perhaps use area rather than radius). 
@@ -227,13 +425,12 @@ export default function Whitehat(props){
             //draw a color legend, automatically scaled based on data extents
             function drawLegend(){
                 let bounds = mapGroup.node().getBBox();
-                const barHeight = Math.min(height/12,35);
+                const barHeight = Math.min(height/10,40);
                 
-                // تنظیم موقعیت legend در گوشه راست بالا
-                let legendX = width - 120; // فاصله از لبه راست
-                const barWidth = 25;
-                const fontHeight = Math.min(barWidth/2,14);
-                let legendY = 20; // فاصله از بالای صفحه
+                let legendX = bounds.x + 10 + bounds.width;
+                const barWidth = Math.min((width - legendX)/3,40);
+                const fontHeight = Math.min(barWidth/2,16);
+                let legendY = bounds.y + 2*fontHeight;
                 
                 let colorLData = [];
                 //OPTIONAL: EDIT THE VALUES IN THE ARRAY TO CHANGE THE NUMBER OF ITEMS IN THE COLOR LEGEND
@@ -267,7 +464,7 @@ export default function Whitehat(props){
                 const legendTitle = {
                     'x': legendX - barWidth,
                     'y': bounds.y,
-                    'text': 'Gun Deaths per Million' 
+                    'text': showCounties ? 'County Gun Deaths per Million' : 'Gun Deaths per Million' 
                 }
                 svg.selectAll('.legendText')
                     .data([legendTitle].concat(colorLData)).enter()
@@ -281,7 +478,7 @@ export default function Whitehat(props){
             drawLegend();
             return mapGroup
         }
-    },[svg,props.map,props.data])
+    },[svg,props.map,props.data,props.countyData,props.showCounties])
 
     //This adds zooming. Triggers whenever the function above finishes
     //this section can be included in the main body but is here as an example 
