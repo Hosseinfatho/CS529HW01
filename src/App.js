@@ -38,7 +38,7 @@ function App() {
   //react looks into the '/public' folder by default
   async function fetchMap(){
     try {
-      const response = await fetch('us-states.geojson');
+      const response = await fetch(process.env.PUBLIC_URL + '/us-states.geojson');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -53,7 +53,7 @@ function App() {
   //load county data
   async function fetchCountyData(){
     try {
-      const response = await fetch('counties-10m.json');
+      const response = await fetch(process.env.PUBLIC_URL + '/counties-10m.json');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -68,7 +68,7 @@ function App() {
   //fetch gun data and attach a timestamp to make sorting dates easier for filters
   async function fetchGunData(){
     try {
-      const response = await fetch('new_processed_gundeaths_data.json');
+      const response = await fetch(process.env.PUBLIC_URL + '/new_processed_gundeaths_data.json');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

@@ -15,7 +15,7 @@ export default function Blackhat(props){
     //albers usa projection puts alaska in the corner
     //this automatically convert latitude and longitude to coordinates on the svg canvas
     const projection = d3.geoAlbersUsa()
-        .scale(1000)  // افزایش scale برای نمایش بهتر نقشه
+        .scale(750)  // کاهش بیشتر scale برای نمایش کامل بخش بالا
         .translate([width/2, height/2]);
 
     //set up the path generator to draw the states
@@ -125,7 +125,7 @@ export default function Blackhat(props){
                 
                 let legendX = bounds.x + 10 + bounds.width;
                 const barWidth = Math.min((width - legendX)/3,40);
-                const fontHeight = Math.min(barWidth/2,16);
+                const fontHeight = Math.min(barWidth/2,12);
                 let legendY = bounds.y + 2*fontHeight;
                 
                 let colorLData = [];
@@ -166,7 +166,7 @@ export default function Blackhat(props){
                     .append('text').attr('class','legendText')
                     .attr('x',d=>d.x+barWidth+5)
                     .attr('y',d=>d.y+barHeight/2 + fontHeight/4)
-                    .attr('font-size',(d,i) => i == 0? 1.2*fontHeight:fontHeight)
+                    .attr('font-size',(d,i) => i == 0? 1.0*fontHeight:fontHeight)
                     .text(d=>d.text);
             }
 
