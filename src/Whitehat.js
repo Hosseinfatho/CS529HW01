@@ -338,7 +338,7 @@ export default function Whitehat(props){
 
             mapGroup.selectAll('.city-group').remove();
 
-            // Create gender-based circle markers with separate circles
+            // Create gender-based circle markers with filled area
             mapGroup.selectAll('.city-group')
                 .data(cityData).enter()
                 .append('g').attr('class','city-group')
@@ -355,28 +355,48 @@ export default function Whitehat(props){
                     const malePercentage = d.count > 0 ? (maleCount / d.count) : 0;
                     const femalePercentage = d.count > 0 ? (femaleCount / d.count) : 0;
                     
-                    // Calculate male circle radius (diameter ratio = male ratio)
-                    const maleRadius = totalRadius * Math.sqrt(malePercentage);
+                    // Create a single circle with gradient fill based on gender ratio
+                    const group = d3.select(this);
                     
-                    // Add background circle for females (full size)
-                    d3.select(this)
-                        .append('circle')
+                    // Add background circle (female color)
+                    group.append('circle')
                         .attr('r', totalRadius)
-                        .attr('fill', '#f1a340') // Orange for female background
+                        .attr('fill', '#b35806') // Orange for female
                         .attr('opacity', 0.7)
                         .attr('stroke', '#333')
                         .attr('stroke-width', 0.5);
                     
-                    // Add male circle (smaller, positioned to one side)
-                    d3.select(this)
-                        .append('circle')
-                        .attr('cx', -totalRadius * 0.3) // Position to the left side
-                        .attr('cy', 0)
-                        .attr('r', maleRadius)
-                        .attr('fill', '#998ec3') // Purple for male
-                        .attr('opacity', 0.8)
-                        .attr('stroke', '#333')
-                        .attr('stroke-width', 0.5);
+                    // Add male portion as a filled area (like water filling)
+                    if (malePercentage > 0) {
+                        // Calculate the height of male portion from bottom
+                        const maleHeight = totalRadius * 2 * malePercentage;
+                        const maleY = totalRadius - maleHeight;
+                        
+                        // Create a rectangle to represent male portion
+                        group.append('rect')
+                            .attr('x', -totalRadius)
+                            .attr('y', maleY)
+                            .attr('width', totalRadius * 2)
+                            .attr('height', maleHeight)
+                            .attr('fill', '#542788') // Purple for male
+                            .attr('opacity', 0.8)
+                            .attr('rx', totalRadius) // Rounded corners to match circle
+                            .attr('ry', totalRadius);
+                        
+                        // Add a circle to create the filled effect
+                        group.append('circle')
+                            .attr('r', totalRadius)
+                            .attr('fill', 'none')
+                            .attr('stroke', '#333')
+                            .attr('stroke-width', 0.5);
+                    } else {
+                        // If no male deaths, just add the border circle
+                        group.append('circle')
+                            .attr('r', totalRadius)
+                            .attr('fill', 'none')
+                            .attr('stroke', '#333')
+                            .attr('stroke-width', 0.5);
+                    }
                 })
                 .on('mouseover',(e,d)=>{
                     let cityName = d.city;
@@ -392,26 +412,23 @@ export default function Whitehat(props){
                         + 'Female: ' + femaleCount + ' (' + femalePercentage + '%)';
                     tTip.html(text);
                     // Highlight the city marker
-                    d3.select(e.target).selectAll('circle')
+                    const group = d3.select(e.target);
+                    group.selectAll('circle')
                         .attr('opacity', 1)
                         .attr('stroke-width', 2);
+                    group.selectAll('rect')
+                        .attr('opacity', 1);
                 }).on('mousemove',(e)=>{
                     props.ToolTip.moveTTipEvent(tTip,e);
                 }).on('mouseout',(e,d)=>{
                     props.ToolTip.hideTTip(tTip);
                     // Reset city marker appearance
                     const group = d3.select(e.target);
-                    group.selectAll('circle').each(function(d, i) {
-                        if (i === 0) {
-                            // Female background circle
-                            d3.select(this).attr('opacity', 0.7);
-                        } else {
-                            // Male circle
-                            d3.select(this).attr('opacity', 0.8);
-                        }
-                    });
                     group.selectAll('circle')
+                        .attr('opacity', 0.7)
                         .attr('stroke-width', 0.5);
+                    group.selectAll('rect')
+                        .attr('opacity', 0.8);
                 }).on('click',(e,d)=>{
                     // Toggle city selection
                     if(props.selectedCity === d.key) {

@@ -163,8 +163,8 @@ export default function WhiteHatStats(props){
         }
 
         // Color scales for male/female
-        const maleColor = '#998ec3';
-        const femaleColor = '#f1a340';
+        const maleColor = '#542788'; // Purple for male
+        const femaleColor = '#b35806'; // Orange for female
 
         // Clear previous elements
         svg.selectAll('*').remove();
