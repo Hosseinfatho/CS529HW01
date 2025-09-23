@@ -17,7 +17,8 @@ export default function Whitehat(props){
     //albers usa projection puts alaska in the corner
     //this automatically convert latitude and longitude to coordinates on the svg canvas
     const projection = d3.geoAlbersUsa()
-        .translate([width/2,height/2]);
+        .scale(1000)  // افزایش scale برای نمایش بهتر نقشه
+        .translate([width/2, height/2]);
 
     //set up the path generator to draw the states
     const geoGenerator = d3.geoPath().projection(projection);
@@ -144,6 +145,7 @@ export default function Whitehat(props){
                 .data(cityData).enter()
                 .append('g').attr('class','city-group')
                 .attr('id',d=>d.key)
+                .style('cursor', 'pointer')
                 .attr('transform', d => {
                     const [x, y] = projection([d.lng, d.lat]);
                     return `translate(${x}, ${y})`;
@@ -212,18 +214,26 @@ export default function Whitehat(props){
                     });
                     group.selectAll('circle')
                         .attr('stroke-width', 0.5);
+                }).on('click',(e,d)=>{
+                    // Toggle city selection
+                    if(props.selectedCity === d.key) {
+                        props.setSelectedCity(undefined);
+                    } else {
+                        props.setSelectedCity(d.key);
+                    }
                 });                
 
             
             //draw a color legend, automatically scaled based on data extents
             function drawLegend(){
                 let bounds = mapGroup.node().getBBox();
-                const barHeight = Math.min(height/10,40);
+                const barHeight = Math.min(height/12,35);
                 
-                let legendX = bounds.x + 10 + bounds.width;
-                const barWidth = Math.min((width - legendX)/3,40);
-                const fontHeight = Math.min(barWidth/2,16);
-                let legendY = bounds.y + 2*fontHeight;
+                // تنظیم موقعیت legend در گوشه راست بالا
+                let legendX = width - 120; // فاصله از لبه راست
+                const barWidth = 25;
+                const fontHeight = Math.min(barWidth/2,14);
+                let legendY = 20; // فاصله از بالای صفحه
                 
                 let colorLData = [];
                 //OPTIONAL: EDIT THE VALUES IN THE ARRAY TO CHANGE THE NUMBER OF ITEMS IN THE COLOR LEGEND
@@ -350,6 +360,26 @@ export default function Whitehat(props){
             }
         }
     },[mapGroupSelection,props.brushedState]);
+
+    // Update city selection visual feedback
+    useMemo(()=>{
+        if(mapGroupSelection !== undefined){
+            mapGroupSelection.selectAll('.city-group')
+                .attr('opacity', d => {
+                    if(props.selectedCity === undefined) return 1;
+                    return props.selectedCity === d.key ? 1 : 0.3;
+                })
+                .selectAll('circle')
+                .attr('stroke-width', d => {
+                    if(props.selectedCity === undefined) return 0.5;
+                    return props.selectedCity === d.key ? 3 : 0.5;
+                })
+                .attr('stroke', d => {
+                    if(props.selectedCity === undefined) return '#333';
+                    return props.selectedCity === d.key ? '#ff0000' : '#333';
+                });
+        }
+    },[mapGroupSelection,props.selectedCity]);
     
     return (
         <div

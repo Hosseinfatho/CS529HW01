@@ -15,7 +15,8 @@ export default function Blackhat(props){
     //albers usa projection puts alaska in the corner
     //this automatically convert latitude and longitude to coordinates on the svg canvas
     const projection = d3.geoAlbersUsa()
-        .translate([width/2,height/2]);
+        .scale(1000)  // افزایش scale برای نمایش بهتر نقشه
+        .translate([width/2, height/2]);
 
     //set up the path generator to draw the states
     const geoGenerator = d3.geoPath().projection(projection);

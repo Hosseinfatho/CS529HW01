@@ -22,6 +22,7 @@ function App() {
   const [zoomedState,setZoomedState] = useState();
   const [selectedStuff,setSelectedStuff] = useState();
   const [brushedState,setBrushedState] = useState();
+  const [selectedCity,setSelectedCity] = useState();
 
   //filter for the linked view in whitehat stats
   const [sortKey,setSortKey] = useState('age');
@@ -64,7 +65,7 @@ function App() {
           <>
             <div style={{'width':'100%','height':'50%','display':'inline-block'}}>
               <div 
-                style={{'height': '100%','width':'calc(100% - 15em)','display':'inline-block'}}
+                style={{'height': '100%','width':'calc(100% - 15em)','display':'inline-block', 'overflow': 'visible'}}
               >
                   <Whitehat
                     map={map}
@@ -75,11 +76,13 @@ function App() {
                     setZoomedState={setZoomedState}
                     brushedState={brushedState}
                     setBrushedState={setBrushedState}
+                    selectedCity={selectedCity}
+                    setSelectedCity={setSelectedCity}
                   />
               </div>
               <div 
                 className={'shadow'}
-                style={{'height': '100%','width':'14em','display':'inline-block','verticalAlign':'text-bottom', 'padding': '10px', 'fontSize': '12px', 'overflow': 'auto', 'textAlign': 'left'}}
+                style={{'height': '100%','width':'14em','display':'inline-block','verticalAlign':'text-bottom', 'padding': '10px', 'fontSize': '12px', 'overflow': 'auto', 'textAlign': 'left', 'position': 'relative', 'zIndex': '1000'}}
               >
                 <h1 
                   style={{'fontSize': '16px', 'marginBottom': '10px', 'cursor': 'pointer', 'userSelect': 'none'}}
@@ -91,6 +94,11 @@ function App() {
                   <div>
                     <p style={{'marginBottom': '8px'}}>{'1- Click on each state to zoom/unzoom'}</p>
                     <p style={{'marginBottom': '8px'}}>{'2- Click on Cities to filter results by city'}</p>
+                    {selectedCity && (
+                      <p style={{'marginBottom': '8px', 'color': '#ff0000', 'fontWeight': 'bold'}}>
+                        {'Selected City: ' + selectedCity}
+                      </p>
+                    )}
                     <p style={{'marginBottom': '15px'}}>{'3- Double-click on rectangles to open  original article'}</p>
                     
                     <h3 style={{'fontSize': '12px', 'fontWeight': 'bold', 'marginBottom': '8px', 'marginTop': '5px'}}>{'Authorship & Sources'}</h3>
@@ -118,6 +126,8 @@ function App() {
                   brushedState={brushedState}
                   setBrushedState={setBrushedState}
                   zoomedState={zoomedState}
+                  selectedCity={selectedCity}
+                  setSelectedCity={setSelectedCity}
                 />     
               </div>   
             </div>
@@ -132,7 +142,7 @@ function App() {
       <>
         <div style={{'width':'100%','height':'50%','display':'inline-block'}}>
           <div 
-            style={{'height': '100%','width':'calc(100% - 15em)','display':'inline-block'}}
+            style={{'height': '100%','width':'calc(100% - 15em)','display':'inline-block', 'overflow': 'visible'}}
           >
               <Blackhat
                 map={map}
@@ -147,7 +157,7 @@ function App() {
           </div>
           <div 
             className={'shadow'}
-            style={{'height': '100%','width':'14em','display':'inline-block','verticalAlign':'text-bottom'}}
+            style={{'height': '100%','width':'14em','display':'inline-block','verticalAlign':'text-bottom', 'position': 'relative', 'zIndex': '1000'}}
           >
             <h1>{'Instructions'}</h1>
             <p>{'Click on each state to zoom and unzoom'}</p>
