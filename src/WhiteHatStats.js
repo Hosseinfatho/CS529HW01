@@ -66,15 +66,15 @@ export default function WhiteHatStats(props){
             adultsDeaths: plotData.reduce((sum, state) => sum + state.adultsCount, 0),
         };
 
-        // Filter data based on brushed state if applicable
+        // Filter data based on selected state if applicable
         let filteredData = plotData;
         let cityData = [];
         let cityGroups = {};
         
-        if (props.brushedState) {
-            // Find the state abbreviation from the brushed state name
-            const brushedStateName = props.brushedState.replace('_', ' ');
-            const stateData = plotData.find(d => d.state === brushedStateName);
+        if (props.selectedState) {
+            // Find the state abbreviation from the selected state name
+            const selectedStateName = props.selectedState;
+            const stateData = plotData.find(d => d.state === selectedStateName);
             const stateAbbreviation = stateData ? stateData.abreviation : null;
             
             if (stateAbbreviation) {
@@ -97,7 +97,9 @@ export default function WhiteHatStats(props){
                             childrenCount: 0,
                             teensCount: 0,
                             youngAdultsCount: 0,
-                            adultsCount: 0
+                            adultsCount: 0,
+                            urls: [], // Store URLs for this city
+                            victims: [] // Store victim data for this city
                         };
                     }
                     
@@ -113,6 +115,12 @@ export default function WhiteHatStats(props){
                     else if (victim.ageGroup === 1.0) cityGroups[victim.city].teensCount++;
                     else if (victim.ageGroup === 2.0) cityGroups[victim.city].youngAdultsCount++;
                     else if (victim.ageGroup === 3.0) cityGroups[victim.city].adultsCount++;
+                    
+                    // Collect URLs and victim data for this city
+                    if (victim.url && !cityGroups[victim.city].urls.includes(victim.url)) {
+                        cityGroups[victim.city].urls.push(victim.url);
+                    }
+                    cityGroups[victim.city].victims.push(victim);
                 });
                 
                 // Calculate percentages for each city
@@ -142,7 +150,7 @@ export default function WhiteHatStats(props){
         
         if (filteredData.length > 0) {
             xScale = d3.scaleBand()
-                .domain(props.brushedState ? filteredData.map(d => d.city) : filteredData.map(d => d.abreviation))
+                .domain(props.selectedState ? filteredData.map(d => d.city) : filteredData.map(d => d.abreviation))
                 .range([margin, width - margin])
                 .padding(0.1);
             
@@ -179,7 +187,7 @@ export default function WhiteHatStats(props){
             // Male bars (bottom)
             barGroups.append('rect')
                 .attr('class', 'bar male-bar')
-                .attr('x', d => xScale(props.brushedState ? d.city : d.abreviation))
+                .attr('x', d => xScale(props.selectedState ? d.city : d.abreviation))
                 .attr('y', d => yScale(d.maleCount))
                 .attr('width', xScale.bandwidth())
                 .attr('height', d => height - margin - yScale(d.maleCount))
@@ -187,7 +195,7 @@ export default function WhiteHatStats(props){
                 .on('mouseover', (e, d) => {
                     const malePct = d.malePercentage ? d.malePercentage.toFixed(1) : '0.0';
                     const femalePct = d.femalePercentage ? d.femalePercentage.toFixed(1) : '0.0';
-                    let string = (props.brushedState ? d.city : d.state) + '</br>'
+                    let string = (props.selectedState ? d.city : d.state) + '</br>'
                         + 'Male Deaths: ' + d.maleCount + ' (' + malePct + '%)</br>'
                         + 'Female Deaths: ' + d.femaleCount + ' (' + femalePct + '%)</br>'
                         + 'Total Deaths: ' + d.totalCount;
@@ -199,12 +207,19 @@ export default function WhiteHatStats(props){
                 })
                 .on('mouseout', (e, d) => {
                 props.ToolTip.hideTTip(tTip);
-            });
+            })
+                .on('click', (e, d) => {
+                    // Open original article for this specific city
+                    if (d.urls && d.urls.length > 0) {
+                        // Open the first URL for this city
+                        window.open(d.urls[0], '_blank');
+                    }
+                });
            
             // Female bars (top)
             barGroups.append('rect')
                 .attr('class', 'bar female-bar')
-                .attr('x', d => xScale(props.brushedState ? d.city : d.abreviation))
+                .attr('x', d => xScale(props.selectedState ? d.city : d.abreviation))
                 .attr('y', d => yScale(d.totalCount))
                 .attr('width', xScale.bandwidth())
                 .attr('height', d => yScale(d.maleCount) - yScale(d.totalCount))
@@ -212,7 +227,7 @@ export default function WhiteHatStats(props){
                 .on('mouseover', (e, d) => {
                     const malePct = d.malePercentage ? d.malePercentage.toFixed(1) : '0.0';
                     const femalePct = d.femalePercentage ? d.femalePercentage.toFixed(1) : '0.0';
-                    let string = (props.brushedState ? d.city : d.state) + '</br>'
+                    let string = (props.selectedState ? d.city : d.state) + '</br>'
                         + 'Male Deaths: ' + d.maleCount + ' (' + malePct + '%)</br>'
                         + 'Female Deaths: ' + d.femaleCount + ' (' + femalePct + '%)</br>'
                         + 'Total Deaths: ' + d.totalCount;
@@ -223,7 +238,14 @@ export default function WhiteHatStats(props){
                     props.ToolTip.moveTTipEvent(tTip, e);
                 })
                 .on('mouseout', (e, d) => {
-                    props.ToolTip.hideTTip(tTip);
+                props.ToolTip.hideTTip(tTip);
+            })
+                .on('click', (e, d) => {
+                    // Open original article for this specific city
+                    if (d.urls && d.urls.length > 0) {
+                        // Open the first URL for this city
+                        window.open(d.urls[0], '_blank');
+                    }
                 });
         } else {
             // Show "No Data" message
@@ -240,10 +262,10 @@ export default function WhiteHatStats(props){
         const labelSize = margin/2;
         let titleText;
         
-        if (props.brushedState) {
-            // Find the state data for the brushed state
-            const brushedStateName = props.brushedState.replace('_', ' ');
-            const stateData = plotData.find(d => d.state === brushedStateName);
+        if (props.selectedState) {
+            // Find the state data for the selected state
+            const selectedStateName = props.selectedState;
+            const stateData = plotData.find(d => d.state === selectedStateName);
             
             if (stateData && filteredData.length > 0) {
                 const cityCount = filteredData.length;
@@ -257,7 +279,7 @@ export default function WhiteHatStats(props){
                 titleText = `No city data available for ${stateData.state} | State Total - Men: ${stateData.maleCount}, Women: ${stateData.femaleCount}, Children: ${stateData.childrenCount}, Teens: ${stateData.teensCount}, Adults: ${stateData.adultsCount}`;
             } else {
                 // State exists in map but not in data
-                titleText = `No gun death data available for ${brushedStateName}`;
+                titleText = `No gun death data available for ${selectedStateName}`;
             }
         } else {
             titleText = `Deaths in USA | Men: ${countryTotals.maleDeaths.toLocaleString()}, Women: ${countryTotals.femaleDeaths.toLocaleString()}, Children: ${countryTotals.childrenDeaths.toLocaleString()}, Teens: ${countryTotals.teensDeaths.toLocaleString()}, Adults: ${countryTotals.adultsDeaths.toLocaleString()}`;
@@ -317,7 +339,7 @@ export default function WhiteHatStats(props){
                 .call(d3.axisLeft(yScale));
         }
         
-    },[svg,props.data,props.brushedState]);
+    },[svg,props.data,props.selectedState]);
 
     return (
         <div

@@ -552,7 +552,18 @@ export default function Whitehat(props){
 
         mapGroupSelection.selectAll('.state')
             .attr('cursor','pointer')//so we know the states are clickable
-            .on('click',clicked);
+            .on('click',clicked)
+            .on('dblclick',(e,d)=>{
+                // Double-click to filter cities by state
+                e.stopPropagation();
+                if(props.setSelectedState){
+                    if(props.selectedState === d.properties.NAME){
+                        props.setSelectedState(undefined); // Clear selection
+                    } else {
+                        props.setSelectedState(d.properties.NAME); // Select state
+                    }
+                }
+            });
 
     },[mapGroupSelection]);
 

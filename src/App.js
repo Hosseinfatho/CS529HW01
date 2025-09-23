@@ -33,6 +33,9 @@ function App() {
   //state for counties data and toggle
   const [countyData, setCountyData] = useState();
   const [showCounties, setShowCounties] = useState(false);
+  
+  //state for selected state for city filtering
+  const [selectedState, setSelectedState] = useState();
 
   //load map contours
   //react looks into the '/public' folder by default
@@ -111,6 +114,8 @@ function App() {
                     setBrushedState={setBrushedState}
                     selectedCity={selectedCity}
                     setSelectedCity={setSelectedCity}
+                    selectedState={selectedState}
+                    setSelectedState={setSelectedState}
                   />
               </div>
               <div 
@@ -141,13 +146,13 @@ function App() {
                 {instructionsExpanded && (
                   <div>
                     <p style={{'marginBottom': '8px'}}>{'1- Click on each state to zoom/unzoom'}</p>
-                    <p style={{'marginBottom': '8px'}}>{'2- Click on Cities to filter results by city'}</p>
-                    {selectedCity && (
+                    <p style={{'marginBottom': '8px'}}>{'2- Double-click on state to show cities in that state'}</p>
+                    {selectedState && (
                       <p style={{'marginBottom': '8px', 'color': '#ff0000', 'fontWeight': 'bold'}}>
-                        {'Selected City: ' + selectedCity}
+                        {'Selected State: ' + selectedState}
                       </p>
                     )}
-                    <p style={{'marginBottom': '15px'}}>{'3- Double-click on rectangles to open  original article'}</p>
+                    <p style={{'marginBottom': '15px'}}>{'3- Click on bar chart to open original article'}</p>
                     
                     <h3 style={{'fontSize': '12px', 'fontWeight': 'bold', 'marginBottom': '8px', 'marginTop': '5px'}}>{'Authorship & Sources'}</h3>
                     <p style={{'fontSize': '10px', 'marginBottom': '8px'}}>{'Data is taken from '}<a href="https://www.slate.com/articles/news_and_politics/crime/2012/12/gun_death_tally_every_american_gun_death_since_newtown_sandy_hook_shooting.html" target="_blank" rel="noopener noreferrer">{'Slate.com'}</a></p>
@@ -176,6 +181,8 @@ function App() {
                   zoomedState={zoomedState}
                   selectedCity={selectedCity}
                   setSelectedCity={setSelectedCity}
+                  selectedState={selectedState}
+                  setSelectedState={setSelectedState}
                 />     
               </div>   
             </div>
