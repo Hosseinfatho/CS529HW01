@@ -43,7 +43,7 @@ function App() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('Map data loaded:', data);
+      // console.log('Map data loaded:', data);
       setMap(data);
     } catch (error) {
       console.error('Error loading map:', error);
@@ -58,7 +58,7 @@ function App() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('County data loaded:', data);
+      // console.log('County data loaded:', data);
       setCountyData(data);
     } catch (error) {
       console.error('Error loading county data:', error);
@@ -73,7 +73,7 @@ function App() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('Gun data loaded:', data);
+      // console.log('Gun data loaded:', data);
       setGunData(data);
     } catch (error) {
       console.error('Error loading gun data:', error);
@@ -231,7 +231,7 @@ function App() {
   //toggle which visualization we're looking at based on the "viewToggle" state
   const hat = ()=>{
     // Only render when data is loaded
-    console.log('Hat render check:', {map: !!map, gunData: !!gunData, countyData: !!countyData});
+    // console.log('Hat render check:', {map: !!map, gunData: !!gunData, countyData: !!countyData});
     if(!map || !gunData){
       return <div>Loading...</div>;
     }

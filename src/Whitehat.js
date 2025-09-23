@@ -36,7 +36,7 @@ export default function Whitehat(props){
     const mapGroupSelection = useMemo(()=>{
         //wait until the svg is rendered and data is loaded
         if(svg !== undefined && props.map !== undefined && props.data !== undefined){
-            console.log('Rendering map...', {svg, map: props.map, data: props.data, countyData: props.countyData, showCounties: props.showCounties});
+            // console.log('Rendering map...', {svg, map: props.map, data: props.data, countyData: props.countyData, showCounties: props.showCounties});
 
             const stateData = props.data.states;
 
@@ -218,8 +218,8 @@ export default function Whitehat(props){
                 return R * c;
             }
 
-            // Debug: Check county matching when showing counties
-            if (showCounties) {
+            // Debug: Check county matching when showing counties (only in development)
+            if (showCounties && process.env.NODE_ENV === 'development') {
                 let matchedCount = 0;
                 let geoMatchedCount = 0;
                 let nameMatchedCount = 0;
@@ -236,7 +236,7 @@ export default function Whitehat(props){
                         }
                     }
                 });
-                console.log(`County matching: ${matchedCount}/${features.length} counties matched (${nameMatchedCount} name matches, ${geoMatchedCount} geographical matches)`);
+                // console.log(`County matching: ${matchedCount}/${features.length} counties matched (${nameMatchedCount} name matches, ${geoMatchedCount} geographical matches)`);
             }
 
             //clear earlier drawings
@@ -478,7 +478,7 @@ export default function Whitehat(props){
             drawLegend();
             return mapGroup
         }
-    },[svg,props.map,props.data,props.countyData,props.showCounties])
+    },[svg, props.map, props.data, props.countyData, props.showCounties, width, height])
 
     //This adds zooming. Triggers whenever the function above finishes
     //this section can be included in the main body but is here as an example 
